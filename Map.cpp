@@ -31,7 +31,7 @@ Map::Map(int level) {
                 tile = generate_tile(j, rng);
             }
 
-            grid_[i][j] = tile;
+            playfield_[i][j] = tile;
         }
     }
 }
@@ -60,14 +60,14 @@ char Map::generate_tile(char row, int rng) {
 char Map::player_collision() {
     for (char i = MAP_HEIGHT - 1; i > MAP_HEIGHT - car_height - 1; i--) {
         for (char j = player_pos_; j < player_pos_ + car_width; j++) {
-            if (grid_[i][j] == tile_special) {
-                clear_spikes();
+            if (playfield_[i][j] == tile_special) {
+                clear_grid();
                 return 0;
             }
             
-            else if (grid_[i][j] != tile_empty) {
-                char collision = grid_[i][j];
-                grid_[i][j] = tile_empty;
+            else if (playfield_[i][j] != tile_empty) {
+                char collision = playfield_[i][j];
+                playfield_[i][j] = tile_empty;
                 return collision;
             }
 
@@ -139,9 +139,9 @@ void Map::advance() {
 
     for (char i = MAP_HEIGHT - 1; i > 0; i--) {
         for (char j = 0; j < MAP_WIDTH; j++) {
-            grid_[i][j] = grid_[i - 1][j];
+            playfield_[i][j] = playfield_[i - 1][j];
             if (j >= enemy_pos_.X && j < enemy_pos_.X + car_width && i < enemy_pos_.Y + car_height && i >= enemy_pos_.Y) {
-                grid_[i][j] = tile_empty;
+                playfield_[i][j] = tile_empty;
             }
         }
     }
@@ -154,68 +154,61 @@ void Map::advance() {
             tile = tile_border;
         }
         else if (enemy_pos_.Y == 0 && enemy_pos_.X >= j && enemy_pos_.X < j + car_width) {
-            grid_[0][j] = tile_empty;
+            tile = tile_empty;
         }
         else {
             tile = generate_tile(j, rng);
         }
 
-        grid_[0][j] = tile;
+        playfield_[0][j] = tile;
         
     }
 
 }
 
-void Map::draw(HANDLE screen_buffer) {
-    DWORD test = 0;
+void Map::draw(CHAR_INFO screen_grid[]) {
     for (char i = 0; i < MAP_HEIGHT; i++) {
         for (char j = 0; j < MAP_WIDTH; j++) {
             _COORD cell = {j, i};
 
-            if (grid_[i][j] == tile_empty) {
-                FillConsoleOutputCharacterA(screen_buffer, ' ', 1, cell, &test);
+            if (playfield_[i][j] == tile_spikes) {
+                screen_grid[j + i * SCREEN_WIDTH].Char.AsciiChar = 'X';
+                screen_grid[j + i * SCREEN_WIDTH].Attributes = FOREGROUND_RED;
             }
-            else if (grid_[i][j] == tile_spikes) {
-                FillConsoleOutputCharacterA(screen_buffer, 'X', 1, cell, &test);
-                FillConsoleOutputAttribute(screen_buffer, FOREGROUND_RED, 1, cell, &test);
+            else if (playfield_[i][j] == tile_bonus) {
+                screen_grid[j + i * SCREEN_WIDTH].Char.AsciiChar = 'B';
+                screen_grid[j + i * SCREEN_WIDTH].Attributes = FOREGROUND_GREEN;
             }
-            else if (grid_[i][j] == tile_bonus) {
-                FillConsoleOutputCharacterA(screen_buffer, 'B', 1, cell, &test);
-                FillConsoleOutputAttribute(screen_buffer, FOREGROUND_GREEN, 1, cell, &test);
+            else if (playfield_[i][j] == tile_special) {
+                screen_grid[j + i * SCREEN_WIDTH].Char.AsciiChar = 'S';
+                screen_grid[j + i * SCREEN_WIDTH].Attributes = FOREGROUND_BLUE;
             }
-            else if (grid_[i][j] == tile_special) {
-                FillConsoleOutputCharacterA(screen_buffer, 'S', 1, cell, &test);
-                FillConsoleOutputAttribute(screen_buffer, FOREGROUND_BLUE, 1, cell, &test);
-            }
-            else if (grid_[i][j] == tile_border) {
-                FillConsoleOutputCharacterA(screen_buffer, '#', 1, cell, &test);
+            else if (playfield_[i][j] == tile_border) {
+                screen_grid[j + i * SCREEN_WIDTH].Char.AsciiChar = '#';
+                screen_grid[j + i * SCREEN_WIDTH].Attributes = FOREGROUND_WHITE;
             }
         }
     }
 
     for (char i = MAP_HEIGHT - 1; i > MAP_HEIGHT - car_height - 1; i--) {
         for (char j = player_pos_; j < player_pos_ + car_width; j++) {
-            _COORD player = {j, i};
-            FillConsoleOutputCharacterA(screen_buffer, 'P', 1, player, &test);
-            FillConsoleOutputAttribute(screen_buffer, FOREGROUND_BLUE | FOREGROUND_GREEN | FOREGROUND_INTENSITY , 1, player, &test);
+            screen_grid[j + i * SCREEN_WIDTH].Char.AsciiChar = 'P';
+            screen_grid[j + i * SCREEN_WIDTH].Attributes = FOREGROUND_BLUE | FOREGROUND_GREEN | FOREGROUND_INTENSITY;
         }
     }
 
     for (char i = enemy_pos_.Y; i < enemy_pos_.Y + car_height; i++) {
         for (char j = enemy_pos_.X; j < enemy_pos_.X + car_width; j++) {
-            _COORD enemy = {j, i};
-            FillConsoleOutputCharacterA(screen_buffer, 'E', 1, enemy, &test);
-            FillConsoleOutputAttribute(screen_buffer, FOREGROUND_RED | FOREGROUND_GREEN | FOREGROUND_INTENSITY, 1, enemy, &test);    
+            screen_grid[j + i * SCREEN_WIDTH].Char.AsciiChar = 'E';
+            screen_grid[j + i * SCREEN_WIDTH].Attributes = FOREGROUND_RED | FOREGROUND_GREEN | FOREGROUND_INTENSITY; 
         }
     }
 }
 
-void Map::clear_spikes() {
+void Map::clear_grid() {
     for (int i = 0; i < MAP_HEIGHT; i++) {
         for (int j = 1; j < MAP_WIDTH - 1; j++) {
-            if (grid_[i][j] == tile_spikes) {
-                grid_[i][j] = tile_empty;
-            }
+            playfield_[i][j] = tile_empty;
         }
     }
 }

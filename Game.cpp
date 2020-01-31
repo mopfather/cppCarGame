@@ -8,12 +8,11 @@
 #define _WIN32_WINNT 0x0500
 #endif
 
-#define PANEL_WIDTH 19
 #define PENALTY 400
 #define BONUS 200
 
 
-//TODO: WHY IS THIS SO SLOW
+//TODO: check drawing logic
 //      allow window resizing
 //      maybe change how enemy car works
 //      starting and victory screen
@@ -32,9 +31,9 @@ Game::Game() {
     active_screen_buffer_ = GetStdHandle(STD_OUTPUT_HANDLE);
     _CONSOLE_CURSOR_INFO cursor_info = {1, false};
     SetConsoleCursorInfo(active_screen_buffer_, &cursor_info);
-    _SMALL_RECT wSize = {0, 0, MAP_WIDTH + PANEL_WIDTH - 1, MAP_HEIGHT - 1};
+    _SMALL_RECT wSize = {0, 0, SCREEN_WIDTH - 1, SCREEN_HEIGHT - 1};
     SetConsoleWindowInfo(active_screen_buffer_, TRUE, &wSize);
-    _COORD buffer_size = {MAP_WIDTH + PANEL_WIDTH, MAP_HEIGHT};
+    _COORD buffer_size = {SCREEN_WIDTH, SCREEN_HEIGHT};
     SetConsoleScreenBufferSize(active_screen_buffer_, buffer_size);
     CONSOLE_FONT_INFOEX font_info = {sizeof(CONSOLE_FONT_INFOEX)};
     GetCurrentConsoleFontEx(active_screen_buffer_, FALSE, &font_info);
@@ -51,7 +50,7 @@ void Game::play() {
     QueryPerformanceFrequency(&frequency);
     QueryPerformanceCounter(&tick_count);
     int dt = 0;
-    int dt_raw; //DEBUG
+    int raw_dt; //DEBUG
 
     while (state_ != Game_state::over) {
         char input = get_input();
@@ -65,7 +64,7 @@ void Game::play() {
             prev_tick_count = tick_count;
             QueryPerformanceCounter(&tick_count);
             dt += (tick_count.QuadPart - prev_tick_count.QuadPart) * 1000 / frequency.QuadPart;
-            dt_raw = (tick_count.QuadPart - prev_tick_count.QuadPart) * 1000 / frequency.QuadPart;  //DEBUG
+            raw_dt = (tick_count.QuadPart - prev_tick_count.QuadPart) * 1000 / frequency.QuadPart;  //DEBUG
 
             if (dt > 200 * pow(0.92, level_)) {
                 score_ += 10;
@@ -76,15 +75,16 @@ void Game::play() {
             bool wall_hit = current_map_->player_move_sideways(input);
             calculate_collisions(wall_hit);
 
-            current_map_->draw(secondary_screen_buffer_);
-            draw_panel(secondary_screen_buffer_, dt_raw);   //DEBUG
-            swap_buffers();
+            clear_screen_grid();
+            current_map_->draw(screen_grid_);
+            draw_panel(raw_dt);     //DEBUG
+            
+            render_screen_grid();
             update_game_state();
-            //Sleep(10);    //DEBUG
         }
 
         else if (state_ == Game_state::paused) {
-            draw_panel(secondary_screen_buffer_, dt_raw);   //DEBUG
+            draw_panel(raw_dt);   //DEBUG
             swap_buffers();
             char input = _getch();
             if (input == 'q') {
@@ -92,9 +92,9 @@ void Game::play() {
             }
             else {
                 state_ = Game_state::running;
+                QueryPerformanceCounter(&tick_count);
             }
         }
-
     }
 }
 
@@ -107,56 +107,43 @@ char Game::get_input() {
 }
 
 //DEBUG MODE
-void Game::draw_panel(HANDLE screen_buffer, int dt) {
-    DWORD test = 0;
+void Game::draw_panel(int dt) {
 
     for (char i = 0; i < MAP_HEIGHT; i++) {
-        _COORD panel_clear = {MAP_WIDTH, i};
-        FillConsoleOutputCharacterA(screen_buffer, ' ', PANEL_WIDTH, panel_clear, &test);
+        screen_grid_[SCREEN_WIDTH * (i + 1) - 1].Char.AsciiChar = '#';
+        screen_grid_[SCREEN_WIDTH * (i + 1) - 1].Attributes = FOREGROUND_WHITE;
     }
 
-    for (char i = 0; i < MAP_HEIGHT; i++) {
-        _COORD panel_border = {MAP_WIDTH + PANEL_WIDTH - 1, i};
-        WriteConsoleOutputCharacterA(screen_buffer, "#", 1, panel_border, &test);
-    }
-
-    _COORD score_coord = {MAP_WIDTH + 2, 3};
     char score_string[PANEL_WIDTH] = "SCORE: ";
     char score[12];
-    itoa(score_, score, 10);
+    _itoa(score_, score, 10);
     strcat(score_string, score);
-    WriteConsoleOutputCharacterA(screen_buffer, score_string, strlen(score_string), score_coord, &test);
+    draw_string(score_string, FOREGROUND_WHITE, MAP_WIDTH + 1, 2);
 
-    _COORD level_coord = {MAP_WIDTH + 2, 5};
     char level_string[PANEL_WIDTH] = "LEVEL: ";
     char level[12];
-    itoa(level_, level, 10);
+    _itoa(level_, level, 10);
     strcat(level_string, level);
-    WriteConsoleOutputCharacterA(screen_buffer, level_string, strlen(level_string), level_coord, &test);
+    draw_string(level_string, FOREGROUND_WHITE, MAP_WIDTH + 1, 4);
 
-    _COORD dt_coord = {MAP_WIDTH + 2, 7};
     char dt_string[PANEL_WIDTH] = "dt: ";
     char dt_s[12];
-    itoa(dt, dt_s, 10);
+    _itoa(dt, dt_s, 10);
     strcat(dt_string, dt_s);
-    WriteConsoleOutputCharacterA(screen_buffer, dt_string, strlen(dt_string), dt_coord, &test);
+    draw_string(dt_string, FOREGROUND_WHITE, MAP_WIDTH + 1, 6);
 
     if (state_ == Game_state::paused) {
-        _COORD pause_coord1 = {MAP_WIDTH + 2, 11};
         char pause_string1[PANEL_WIDTH] = "GAME IS PAUSED";
-        WriteConsoleOutputCharacterA(screen_buffer, pause_string1, strlen(pause_string1), pause_coord1, &test);
+        draw_string(pause_string1, FOREGROUND_WHITE, MAP_WIDTH + 1, 10);
 
-        _COORD pause_coord2 = {MAP_WIDTH + 2, 13};
         char pause_string2[PANEL_WIDTH] = "PRESS ANY KEY";
-        WriteConsoleOutputCharacterA(screen_buffer, pause_string2, strlen(pause_string2), pause_coord2, &test);
+        draw_string(pause_string2, FOREGROUND_WHITE, MAP_WIDTH + 1, 12);
 
-        _COORD pause_coord3 = {MAP_WIDTH + 3, 14};
         char pause_string3[PANEL_WIDTH] = "TO CONTINUE";
-        WriteConsoleOutputCharacterA(screen_buffer, pause_string3, strlen(pause_string3), pause_coord3, &test);
+        draw_string(pause_string3, FOREGROUND_WHITE, MAP_WIDTH + 2, 13);
 
-        _COORD pause_coord4 = {MAP_WIDTH + 4, 16};
         char pause_string4[PANEL_WIDTH] = "Q TO QUIT";
-        WriteConsoleOutputCharacterA(screen_buffer, pause_string4, strlen(pause_string4), pause_coord4, &test);
+        draw_string(pause_string4, FOREGROUND_WHITE, MAP_WIDTH + 3, 15);   
     }
 }
 
@@ -233,3 +220,28 @@ void Game::calculate_collisions(int wall_hit) {
     }
 }
     
+void Game::clear_screen_grid() {
+    for (int i = 0; i < MAP_HEIGHT; i++) {
+        for (int j = 0; j < SCREEN_WIDTH; j++) {
+            screen_grid_[j + i * SCREEN_WIDTH].Char.AsciiChar = ' ';
+            screen_grid_[j + i * SCREEN_WIDTH].Attributes = 0;
+        }
+    }
+}
+
+void Game::draw_string(char* string, short attributes, int x_pos, int y_pos ) {
+    while (*string) {
+        screen_grid_[x_pos + y_pos * SCREEN_WIDTH].Char.AsciiChar = *string;
+        screen_grid_[x_pos + y_pos * SCREEN_WIDTH].Attributes = attributes;
+        string++;
+        x_pos++;
+    }
+}
+
+void Game::render_screen_grid() {
+    _COORD origin = {0, 0};
+    _COORD screen_size = {SCREEN_WIDTH, SCREEN_HEIGHT};
+    SMALL_RECT write_region = {0, 0, SCREEN_WIDTH - 1, SCREEN_HEIGHT - 1};
+    WriteConsoleOutputA(secondary_screen_buffer_, screen_grid_, screen_size, origin, &write_region);
+    swap_buffers();
+}

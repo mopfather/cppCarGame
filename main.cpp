@@ -3,5 +3,5 @@
 int main() {
     Game game;
     game.play();
-    return 0;
+	return 0;
 }

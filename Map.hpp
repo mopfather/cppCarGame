@@ -2,6 +2,9 @@
 
 #define MAP_WIDTH 47
 #define MAP_HEIGHT 22
+#define SCREEN_WIDTH 66
+#define SCREEN_HEIGHT 22
+#define FOREGROUND_WHITE FOREGROUND_RED | FOREGROUND_GREEN | FOREGROUND_BLUE
 
 struct Map_position {
     char X;
@@ -10,7 +13,7 @@ struct Map_position {
 
 class Map {
     private:
-        char grid_[MAP_HEIGHT][MAP_WIDTH];
+        char playfield_[MAP_HEIGHT][MAP_WIDTH];
         char player_pos_;
         Map_position enemy_pos_;
         bool enemy_advance_;
@@ -25,6 +28,6 @@ class Map {
         void advance();
         char player_collision();
         void enemy_car_movement();
-        void draw(HANDLE screen_buffer);
-        void clear_spikes();
+        void draw(CHAR_INFO screen_grid[]);
+        void clear_grid();
 };

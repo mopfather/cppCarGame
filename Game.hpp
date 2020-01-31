@@ -1,6 +1,8 @@
 #include "Map.hpp"
 #include <windows.h>
 
+#define PANEL_WIDTH 19
+
 enum class Game_state {
     running,
     paused,
@@ -19,6 +21,7 @@ class Game {
         maps_ll* map_list_;
         int score_;
         int level_;
+        CHAR_INFO screen_grid_[SCREEN_WIDTH*MAP_HEIGHT];
         HANDLE active_screen_buffer_;
         HANDLE secondary_screen_buffer_;
         HANDLE input_buffer_;
@@ -27,10 +30,13 @@ class Game {
         Game();
         void play();
         char get_input();
-        void draw_panel(HANDLE screen_buffer, int dt);  //DEBUG
-        Map* get_map(int level);
-        void append_map_list(Map* new_map);
+        void clear_screen_grid();
+        void draw_panel(int dt);  //DEBUG
+        void draw_string(char* string, short attributes, int x_pos, int y_pos);
+        void render_screen_grid();
         void swap_buffers();
         void update_game_state();
+        Map* get_map(int level);
+        void append_map_list(Map* new_map);
         void calculate_collisions(int wall_hit);
 };
