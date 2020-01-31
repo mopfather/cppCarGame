@@ -8,7 +8,8 @@ enum tiles {
     tile_spikes = 'X',
     tile_bonus = 'B',
     tile_border = '#',
-    tile_empty = ' '
+    tile_empty = ' ',
+    tile_special = 'S'
 };
 
 Map::Map(int level) {
@@ -20,38 +21,56 @@ Map::Map(int level) {
 
     for (char i = 0; i < MAP_HEIGHT; i++) {
         for (char j = 0; j < MAP_WIDTH; j++) {
-            char cell;
+            char tile;
             int rng = rand() % 1000;
             
             if (j >= player_pos_ - 4 && j < player_pos_ + car_width + 4 && i > MAP_HEIGHT - car_height - 6) {
-                cell = tile_empty;
-            }
-            else if (j == 0 || j == MAP_WIDTH - 1) {
-                cell = tile_border;
-            }
-            else if (rng < 8 + 3*level_) {
-                cell = tile_spikes;
-            }
-            else if (rng < 11 + 3*level_) {
-                cell = tile_bonus;
+                tile = tile_empty;
             }
             else {
-                cell = tile_empty;
+                tile = generate_tile(j, rng);
             }
 
-            grid_[i][j] = cell;
+            grid_[i][j] = tile;
         }
     }
+}
+
+char Map::generate_tile(char row, int rng) {
+    char tile;
+    if (row == 0 || row == MAP_WIDTH - 1) {
+        tile = tile_border;
+    }
+    else if (rng < 8 + 3*level_) {
+        tile = tile_spikes;
+    }
+    else if (rng < 11 + 3*level_) {
+        tile = tile_bonus;
+    }
+    else if (rng < 12 + 3*level_) {
+        tile = tile_special;
+    }
+    else {
+        tile = tile_empty;
+    }
+
+    return tile;
 }
 
 char Map::player_collision() {
     for (char i = MAP_HEIGHT - 1; i > MAP_HEIGHT - car_height - 1; i--) {
         for (char j = player_pos_; j < player_pos_ + car_width; j++) {
-            if (grid_[i][j] != tile_empty) {
+            if (grid_[i][j] == tile_special) {
+                clear_spikes();
+                return 0;
+            }
+            
+            else if (grid_[i][j] != tile_empty) {
                 char collision = grid_[i][j];
                 grid_[i][j] = tile_empty;
                 return collision;
             }
+
             if (enemy_pos_.Y > MAP_HEIGHT - 2*car_height && enemy_pos_.X > player_pos_ - car_width && enemy_pos_.X < player_pos_ + car_width) {
                 enemy_pos_.X = MAP_WIDTH/2;
                 enemy_pos_.Y = 0;
@@ -129,25 +148,20 @@ void Map::advance() {
     
     for (char j = 0; j < MAP_WIDTH; j++) {
         int rng = rand() % 1000;
-        char cell;
+        char tile;
         
         if (j == 0 || j == MAP_WIDTH - 1) {
-            cell = tile_border;
+            tile = tile_border;
         }
-        else if (rng < 5 + 2*level_) {
-            cell = tile_spikes;
-        }
-        else if (rng < 8 + 2*level_) {
-            cell = tile_bonus;
-        }
-        else {
-            cell = tile_empty;
-        }
-
-        grid_[0][j] = cell;
-        if (enemy_pos_.Y == 0 && enemy_pos_.X >= j && enemy_pos_.X < j + car_width) {
+        else if (enemy_pos_.Y == 0 && enemy_pos_.X >= j && enemy_pos_.X < j + car_width) {
             grid_[0][j] = tile_empty;
         }
+        else {
+            tile = generate_tile(j, rng);
+        }
+
+        grid_[0][j] = tile;
+        
     }
 
 }
@@ -160,7 +174,6 @@ void Map::draw(HANDLE screen_buffer) {
 
             if (grid_[i][j] == tile_empty) {
                 FillConsoleOutputCharacterA(screen_buffer, ' ', 1, cell, &test);
-                FillConsoleOutputAttribute(screen_buffer, 0, 1, cell, &test);
             }
             else if (grid_[i][j] == tile_spikes) {
                 FillConsoleOutputCharacterA(screen_buffer, 'X', 1, cell, &test);
@@ -169,6 +182,10 @@ void Map::draw(HANDLE screen_buffer) {
             else if (grid_[i][j] == tile_bonus) {
                 FillConsoleOutputCharacterA(screen_buffer, 'B', 1, cell, &test);
                 FillConsoleOutputAttribute(screen_buffer, FOREGROUND_GREEN, 1, cell, &test);
+            }
+            else if (grid_[i][j] == tile_special) {
+                FillConsoleOutputCharacterA(screen_buffer, 'S', 1, cell, &test);
+                FillConsoleOutputAttribute(screen_buffer, FOREGROUND_BLUE, 1, cell, &test);
             }
             else if (grid_[i][j] == tile_border) {
                 FillConsoleOutputCharacterA(screen_buffer, '#', 1, cell, &test);
@@ -192,3 +209,14 @@ void Map::draw(HANDLE screen_buffer) {
         }
     }
 }
+
+void Map::clear_spikes() {
+    for (int i = 0; i < MAP_HEIGHT; i++) {
+        for (int j = 1; j < MAP_WIDTH - 1; j++) {
+            if (grid_[i][j] == tile_spikes) {
+                grid_[i][j] = tile_empty;
+            }
+        }
+    }
+}
+

@@ -20,14 +20,11 @@ class Map {
         const char car_width = 2;
         const char car_height = 2;
         Map(int level);
-        char player_collision();
-        //returns 0 if no collision occured
-        //returns the type of first object car collided with as char otherwise
-        //clears the cell of the object returned
-        void enemy_car_movement();
+        char generate_tile(char col, int rng);
         bool player_move_sideways(int keypressed);
-        //updates player position based on input
-        //returns true if wall was hit
         void advance();
+        char player_collision();
+        void enemy_car_movement();
         void draw(HANDLE screen_buffer);
+        void clear_spikes();
 };
