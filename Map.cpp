@@ -22,13 +22,15 @@ Map::Map(int level) {
     for (char i = 0; i < MAP_HEIGHT; i++) {
         for (char j = 0; j < MAP_WIDTH; j++) {
             char tile;
-            int rng = rand() % 1000;
-            
-            if (j >= player_pos_ - 4 && j < player_pos_ + car_width + 4 && i > MAP_HEIGHT - car_height - 6) {
+
+            if (j == 0 || j == MAP_WIDTH - 1) {
+                tile = tile_border;
+            } 
+            else if (j >= player_pos_ - 4 && j < player_pos_ + car_width + 4 && i > MAP_HEIGHT - car_height - 6) {
                 tile = tile_empty;
             }
             else {
-                tile = generate_tile(j, rng);
+                tile = generate_tile();
             }
 
             playfield_[i][j] = tile;
@@ -36,12 +38,11 @@ Map::Map(int level) {
     }
 }
 
-char Map::generate_tile(char row, int rng) {
+char Map::generate_tile() {
     char tile;
-    if (row == 0 || row == MAP_WIDTH - 1) {
-        tile = tile_border;
-    }
-    else if (rng < 8 + 3*level_) {
+    int rng = rand() % 1000;
+
+    if (rng < 8 + 3*level_) {
         tile = tile_spikes;
     }
     else if (rng < 11 + 3*level_) {
@@ -147,7 +148,6 @@ void Map::advance() {
     }
     
     for (char j = 0; j < MAP_WIDTH; j++) {
-        int rng = rand() % 1000;
         char tile;
         
         if (j == 0 || j == MAP_WIDTH - 1) {
@@ -157,7 +157,7 @@ void Map::advance() {
             tile = tile_empty;
         }
         else {
-            tile = generate_tile(j, rng);
+            tile = generate_tile();
         }
 
         playfield_[0][j] = tile;

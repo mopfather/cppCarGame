@@ -23,7 +23,7 @@ class Map {
         const char car_width = 2;
         const char car_height = 2;
         Map(int level);
-        char generate_tile(char col, int rng);
+        char generate_tile();
         bool player_move_sideways(int keypressed);
         void advance();
         char player_collision();
