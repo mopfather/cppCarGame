@@ -26,7 +26,7 @@ Map::Map(int level) {
             if (j == 0 || j == MAP_WIDTH - 1) {
                 tile = tile_border;
             } 
-            else if (j >= player_pos_ - 4 && j < player_pos_ + car_width + 4 && i > MAP_HEIGHT - car_height - 6) {
+            else if (j >= player_pos_ - 6 && j < player_pos_ + car_width + 7 && i > MAP_HEIGHT - car_height - 7) {
                 tile = tile_empty;
             }
             else {

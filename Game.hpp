@@ -30,6 +30,7 @@ class Game {
         Game();
         void play();
         char get_input();
+        void calculate_collisions(int wall_hit);
         void clear_screen_grid();
         void draw_panel(int dt);  //DEBUG
         void draw_string(char* string, short attributes, int x_pos, int y_pos);
@@ -38,5 +39,5 @@ class Game {
         void update_game_state();
         Map* get_map(int level);
         void append_map_list(Map* new_map);
-        void calculate_collisions(int wall_hit);
+
 };

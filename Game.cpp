@@ -57,7 +57,6 @@ void Game::play() {
 
         if (input == 'p') {
             state_ = Game_state::paused;
-            FlushConsoleInputBuffer(input_buffer_);
         }
 
         if (state_ == Game_state::running) {
@@ -66,7 +65,7 @@ void Game::play() {
             dt += (tick_count.QuadPart - prev_tick_count.QuadPart) * 1000 / frequency.QuadPart;
             raw_dt = (tick_count.QuadPart - prev_tick_count.QuadPart) * 1000 / frequency.QuadPart;  //DEBUG
 
-            if (dt > 200 * pow(0.92, level_)) {
+            if (dt > 200 * pow(0.94, level_)) {
                 score_ += 10;
                 current_map_->advance();
                 dt = 0;
@@ -92,7 +91,6 @@ void Game::play() {
             }
             else {
                 state_ = Game_state::running;
-                QueryPerformanceCounter(&tick_count);
             }
         }
     }
@@ -106,6 +104,30 @@ char Game::get_input() {
     return c;
 }
 
+
+void Game::calculate_collisions(int wall_hit) {
+    if (wall_hit) {
+        score_ -= PENALTY;
+    }
+
+    char collision = current_map_->player_collision();
+    while (collision) {
+        switch (collision) {
+            case 'X':
+                score_ -= PENALTY;
+                break;
+            case 'B':
+                score_ += BONUS;
+                break;
+            case 'E':
+                score_ -= 2 * PENALTY;
+                break;
+        }
+        collision = current_map_->player_collision();
+    }
+}
+
+
 //DEBUG MODE
 void Game::draw_panel(int dt) {
 
@@ -118,34 +140,57 @@ void Game::draw_panel(int dt) {
     char score[12];
     _itoa(score_, score, 10);
     strcat(score_string, score);
-    draw_string(score_string, FOREGROUND_WHITE, MAP_WIDTH + 1, 2);
+    draw_string(score_string, FOREGROUND_WHITE, MAP_WIDTH + 2, 2);
 
     char level_string[PANEL_WIDTH] = "LEVEL: ";
     char level[12];
     _itoa(level_, level, 10);
     strcat(level_string, level);
-    draw_string(level_string, FOREGROUND_WHITE, MAP_WIDTH + 1, 4);
+    draw_string(level_string, FOREGROUND_WHITE, MAP_WIDTH + 2, 4);
 
     char dt_string[PANEL_WIDTH] = "dt: ";
     char dt_s[12];
     _itoa(dt, dt_s, 10);
     strcat(dt_string, dt_s);
-    draw_string(dt_string, FOREGROUND_WHITE, MAP_WIDTH + 1, 6);
+    draw_string(dt_string, FOREGROUND_WHITE, MAP_WIDTH + 2, 6);
 
     if (state_ == Game_state::paused) {
         char pause_string1[PANEL_WIDTH] = "GAME IS PAUSED";
-        draw_string(pause_string1, FOREGROUND_WHITE, MAP_WIDTH + 1, 10);
+        draw_string(pause_string1, FOREGROUND_WHITE, MAP_WIDTH + 2, 10);
 
         char pause_string2[PANEL_WIDTH] = "PRESS ANY KEY";
-        draw_string(pause_string2, FOREGROUND_WHITE, MAP_WIDTH + 1, 12);
+        draw_string(pause_string2, FOREGROUND_WHITE, MAP_WIDTH + 2, 12);
 
         char pause_string3[PANEL_WIDTH] = "TO CONTINUE";
-        draw_string(pause_string3, FOREGROUND_WHITE, MAP_WIDTH + 2, 13);
+        draw_string(pause_string3, FOREGROUND_WHITE, MAP_WIDTH + 3, 13);
 
         char pause_string4[PANEL_WIDTH] = "Q TO QUIT";
-        draw_string(pause_string4, FOREGROUND_WHITE, MAP_WIDTH + 3, 15);   
+        draw_string(pause_string4, FOREGROUND_WHITE, MAP_WIDTH + 4, 15);   
     }
 }
+
+
+void Game::update_game_state() {
+    if (score_ < 0) {
+        state_ = Game_state::over;
+    }
+
+    else if (score_ < (level_ - 1) * 2000) {
+        level_ -= 1;
+        score_ -= 800;
+        current_map_ = get_map(level_);
+    }
+
+    else if (score_ >= level_ * 2000) {
+        level_ += 1;
+        current_map_ = get_map(level_);
+        if (!current_map_) {
+            current_map_ = new Map(level_);
+            append_map_list(current_map_);
+        }
+    }
+}
+
 
 Map* Game::get_map(int level) {
     maps_ll* iter = map_list_;
@@ -170,55 +215,6 @@ void Game::append_map_list(Map* new_map) {
     iter->next = NULL;
 }
 
-void Game::swap_buffers() {
-    HANDLE temp = secondary_screen_buffer_;
-    secondary_screen_buffer_ = active_screen_buffer_;
-    active_screen_buffer_ = temp;
-    SetConsoleActiveScreenBuffer(active_screen_buffer_);
-}
-
-void Game::update_game_state() {
-    if (score_ < 0) {
-        state_ = Game_state::over;
-    }
-
-    else if (score_ < (level_ - 1) * 2000) {
-        level_ -= 1;
-        score_ -= 800;
-        current_map_ = get_map(level_);
-    }
-
-    else if (score_ >= level_ * 2000) {
-        level_ += 1;
-        current_map_ = get_map(level_);
-        if (!current_map_) {
-            current_map_ = new Map(level_);
-            append_map_list(current_map_);
-        }
-    }
-}
-
-void Game::calculate_collisions(int wall_hit) {
-    if (wall_hit) {
-        score_ -= PENALTY;
-    }
-
-    char collision = current_map_->player_collision();
-    while (collision) {
-        switch (collision) {
-            case 'X':
-                score_ -= PENALTY;
-                break;
-            case 'B':
-                score_ += BONUS;
-                break;
-            case 'E':
-                score_ -= 2 * PENALTY;
-                break;
-        }
-        collision = current_map_->player_collision();
-    }
-}
     
 void Game::clear_screen_grid() {
     for (int i = 0; i < MAP_HEIGHT; i++) {
@@ -244,4 +240,11 @@ void Game::render_screen_grid() {
     SMALL_RECT write_region = {0, 0, SCREEN_WIDTH - 1, SCREEN_HEIGHT - 1};
     WriteConsoleOutputA(secondary_screen_buffer_, screen_grid_, screen_size, origin, &write_region);
     swap_buffers();
+}
+
+void Game::swap_buffers() {
+    HANDLE temp = secondary_screen_buffer_;
+    secondary_screen_buffer_ = active_screen_buffer_;
+    active_screen_buffer_ = temp;
+    SetConsoleActiveScreenBuffer(active_screen_buffer_);
 }
