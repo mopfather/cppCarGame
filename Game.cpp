@@ -12,11 +12,7 @@
 #define BONUS 200
 
 
-//TODO: make resizing work pls
-//      maybe double buffering again
-//      allow window resizing
-//      maybe change how enemy car works
-//      starting and victory screen
+//TODO: starting and victory screen
 
 Game::Game() {
     state_ = Game_state::running;
@@ -27,42 +23,43 @@ Game::Game() {
     score_ = 0;
     level_ = 1;
 
-    input_buffer_ = GetStdHandle(STD_INPUT_HANDLE);
-
-    screen_buffer_ = GetStdHandle(STD_OUTPUT_HANDLE);
+    active_screen_buffer_ = GetStdHandle(STD_OUTPUT_HANDLE);
     _CONSOLE_CURSOR_INFO cursor_info = {1, false};
-    SetConsoleCursorInfo(screen_buffer_, &cursor_info);
+    SetConsoleCursorInfo(active_screen_buffer_, &cursor_info);
     _SMALL_RECT wSize = {0, 0, SCREEN_WIDTH - 1, SCREEN_HEIGHT - 1};
-    SetConsoleWindowInfo(screen_buffer_, TRUE, &wSize);
+    SetConsoleWindowInfo(active_screen_buffer_, TRUE, &wSize);
     _COORD buffer_size = {SCREEN_WIDTH, SCREEN_HEIGHT};
-    SetConsoleScreenBufferSize(screen_buffer_, buffer_size);
+    SetConsoleScreenBufferSize(active_screen_buffer_, buffer_size);
     CONSOLE_FONT_INFOEX font_info = {sizeof(CONSOLE_FONT_INFOEX)};
-    GetCurrentConsoleFontEx(screen_buffer_, FALSE, &font_info);
-    font_info.dwFontSize.X = 14;
-    font_info.dwFontSize.Y = 24;
-    SetCurrentConsoleFontEx(screen_buffer_, FALSE,  &font_info);
+    GetCurrentConsoleFontEx(active_screen_buffer_, FALSE, &font_info);
+    font_info.dwFontSize.Y = 28;
+    SetCurrentConsoleFontEx(active_screen_buffer_, FALSE,  &font_info);
+
+    secondary_screen_buffer_ = CreateConsoleScreenBuffer(GENERIC_WRITE, 0, NULL, CONSOLE_TEXTMODE_BUFFER, NULL);
+    SetConsoleCursorInfo(secondary_screen_buffer_, &cursor_info);
+    SetCurrentConsoleFontEx(secondary_screen_buffer_, FALSE,  &font_info);
 }
+
 
 void Game::play() {
     LARGE_INTEGER frequency, tick_count, prev_tick_count;
     QueryPerformanceFrequency(&frequency);
     QueryPerformanceCounter(&tick_count);
-    int dt = 0;
-    int raw_dt; //DEBUG
+    double dt = 0;
+    double fps;
 
     while (state_ != Game_state::over) {
         char input = get_input();
         if (input == 'p') {
             state_ = Game_state::paused;
         }
-        //window_resizing();
 
+        prev_tick_count = tick_count;
+        QueryPerformanceCounter(&tick_count);
+        dt += (double) (tick_count.QuadPart - prev_tick_count.QuadPart) * 1000 / frequency.QuadPart;
+        fps = (double) frequency.QuadPart / (tick_count.QuadPart - prev_tick_count.QuadPart);
 
         if (state_ == Game_state::running) {
-            prev_tick_count = tick_count;
-            QueryPerformanceCounter(&tick_count);
-            dt += (tick_count.QuadPart - prev_tick_count.QuadPart) * 1000 / frequency.QuadPart;
-            raw_dt = (tick_count.QuadPart - prev_tick_count.QuadPart) * 1000 / frequency.QuadPart;  //DEBUG
 
             if (dt > 200 * pow(0.94, level_)) {
                 score_ += 10;
@@ -75,21 +72,29 @@ void Game::play() {
 
             clear_screen_grid();
             current_map_->draw(screen_grid_);
-            draw_panel(raw_dt);     //DEBUG
+            draw_panel(fps);
             
+            clear_screen_buffer();
             render_screen_grid();
+
             update_game_state();
-            Sleep(10);
+            //Sleep(2);
         }
 
         else if (state_ == Game_state::paused) {
-            draw_panel(raw_dt);   //DEBUG
+            clear_screen_grid();
+            current_map_->draw(screen_grid_);
+            draw_panel(fps);
+            
+            clear_screen_buffer();
             render_screen_grid();
+            
             char input = _getch();
             if (input == 'q') {
                 state_ = Game_state::over;
             }
             else {
+                QueryPerformanceCounter(&tick_count);
                 state_ = Game_state::running;
             }
         }
@@ -129,7 +134,7 @@ void Game::calculate_collisions(int wall_hit) {
 
 
 //DEBUG MODE
-void Game::draw_panel(int dt) {
+void Game::draw_panel(double fps) {
 
     for (char i = 0; i < MAP_HEIGHT; i++) {
         screen_grid_[SCREEN_WIDTH * (i + 1) - 1].Char.AsciiChar = '#';
@@ -148,11 +153,11 @@ void Game::draw_panel(int dt) {
     strcat(level_string, level);
     draw_string(level_string, FOREGROUND_WHITE, MAP_WIDTH + 2, 4);
 
-    char dt_string[PANEL_WIDTH] = "dt: ";
-    char dt_s[12];
-    _itoa(dt, dt_s, 10);
-    strcat(dt_string, dt_s);
-    draw_string(dt_string, FOREGROUND_WHITE, MAP_WIDTH + 2, 6);
+    char fps_string[PANEL_WIDTH] = "fps: ";
+    char fps_s[12];
+    _itoa(fps, fps_s, 10);
+    strcat(fps_string, fps_s);
+    draw_string(fps_string, FOREGROUND_WHITE, MAP_WIDTH + 2, 6);
 
     if (state_ == Game_state::paused) {
         char pause_string1[PANEL_WIDTH] = "GAME IS PAUSED";
@@ -234,47 +239,37 @@ void Game::draw_string(char* string, short attributes, int x_pos, int y_pos ) {
     }
 }
 
+void Game::clear_screen_buffer() {
+    DWORD temp;
+    _COORD origin = {0, 0};
+    CONSOLE_SCREEN_BUFFER_INFO buffer_info;
+    GetConsoleScreenBufferInfo(secondary_screen_buffer_, &buffer_info);
+    FillConsoleOutputCharacterA(secondary_screen_buffer_, ' ', buffer_info.dwSize.X * buffer_info.dwSize.Y, origin, &temp); 
+}
+
 void Game::render_screen_grid() {
     _COORD origin = {0, 0};
     _COORD screen_size = {SCREEN_WIDTH, SCREEN_HEIGHT};
     SMALL_RECT write_region = {0, 0, SCREEN_WIDTH - 1, SCREEN_HEIGHT - 1};
-    WriteConsoleOutputA(screen_buffer_, screen_grid_, screen_size, origin, &write_region);
+    WriteConsoleOutputA(secondary_screen_buffer_, screen_grid_, screen_size, origin, &write_region);
+    swap_buffers();
+}
+
+void Game::swap_buffers() {
+    HANDLE temp = secondary_screen_buffer_;
+    secondary_screen_buffer_ = active_screen_buffer_;
+    active_screen_buffer_ = temp;
+    SetConsoleActiveScreenBuffer(active_screen_buffer_);
 }
 
 
-void Game::window_resizing() {
-    CONSOLE_SCREEN_BUFFER_INFO buffer_info;
-    GetConsoleScreenBufferInfo(screen_buffer_, &buffer_info);
-    CONSOLE_FONT_INFOEX font_info = {sizeof(CONSOLE_FONT_INFOEX)};
-    GetCurrentConsoleFontEx(screen_buffer_, FALSE, &font_info);
+void Game::start_screen() {
     
 
-    short newFontX, newFontY;
-    if (buffer_info.dwSize.X != SCREEN_WIDTH || buffer_info.dwSize.Y != SCREEN_HEIGHT) {
-        newFontX = font_info.dwFontSize.X * buffer_info.dwSize.X / SCREEN_WIDTH;
-        newFontY = font_info.dwFontSize.Y * buffer_info.dwSize.Y / SCREEN_HEIGHT;
-            
-        _CONSOLE_CURSOR_INFO cursor_info = {1, false};
-        if (!SetConsoleCursorInfo(screen_buffer_, &cursor_info)) {
-            std::cout << "cursor";
-            Sleep(10000);
-        }
-        _SMALL_RECT wSize = {0, 0, SCREEN_WIDTH - 1, SCREEN_HEIGHT - 1};
-        if (!SetConsoleWindowInfo(screen_buffer_, TRUE, &wSize)) {
-            std::cout << "window size";
-            Sleep(10000);
-        }
-        _COORD buffer_size = {SCREEN_WIDTH, SCREEN_HEIGHT};
- 
-        if (!SetConsoleScreenBufferSize(screen_buffer_, buffer_size)) {
-            std::cout << "buffer size";
-            Sleep(10000);
-        }
-        font_info.dwFontSize.X = newFontX;
-        font_info.dwFontSize.Y = newFontY;
-        if (!SetCurrentConsoleFontEx(screen_buffer_, FALSE,  &font_info)) {
-            std::cout << "font size";
-            Sleep(10000);
-        }
-    }
+}
+
+
+void Game::end_screen() {
+
+    
 }

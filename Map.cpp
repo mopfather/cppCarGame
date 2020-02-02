@@ -105,7 +105,7 @@ void Map::enemy_car_movement() {
     else {
         enemy_advance_ = true;
         enemy_pos_.Y += 1;
-        
+
         if (enemy_pos_.Y > MAP_HEIGHT - car_height) {
             enemy_pos_.X = MAP_WIDTH/2;
             enemy_pos_.Y = 0;
@@ -169,7 +169,6 @@ void Map::advance() {
 void Map::draw(CHAR_INFO screen_grid[]) {
     for (char i = 0; i < MAP_HEIGHT; i++) {
         for (char j = 0; j < MAP_WIDTH; j++) {
-            _COORD cell = {j, i};
 
             if (playfield_[i][j] == tile_spikes) {
                 screen_grid[j + i * SCREEN_WIDTH].Char.AsciiChar = 'X';
@@ -181,7 +180,7 @@ void Map::draw(CHAR_INFO screen_grid[]) {
             }
             else if (playfield_[i][j] == tile_special) {
                 screen_grid[j + i * SCREEN_WIDTH].Char.AsciiChar = 'S';
-                screen_grid[j + i * SCREEN_WIDTH].Attributes = FOREGROUND_BLUE;
+                screen_grid[j + i * SCREEN_WIDTH].Attributes = FOREGROUND_BLUE | FOREGROUND_INTENSITY;
             }
             else if (playfield_[i][j] == tile_border) {
                 screen_grid[j + i * SCREEN_WIDTH].Char.AsciiChar = '#';
