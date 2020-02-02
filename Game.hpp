@@ -22,7 +22,7 @@ class Game {
         int score_;
         int level_;
         CHAR_INFO screen_grid_[SCREEN_WIDTH*MAP_HEIGHT];
-        HANDLE active_screen_buffer_;
+        HANDLE screen_buffer_;
         HANDLE secondary_screen_buffer_;
         HANDLE input_buffer_;
     
@@ -35,9 +35,9 @@ class Game {
         void draw_panel(int dt);  //DEBUG
         void draw_string(char* string, short attributes, int x_pos, int y_pos);
         void render_screen_grid();
-        void swap_buffers();
         void update_game_state();
         Map* get_map(int level);
         void append_map_list(Map* new_map);
+        void window_resizing();
 
 };

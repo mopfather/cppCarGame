@@ -12,7 +12,8 @@
 #define BONUS 200
 
 
-//TODO: check drawing logic
+//TODO: make resizing work pls
+//      maybe double buffering again
 //      allow window resizing
 //      maybe change how enemy car works
 //      starting and victory screen
@@ -28,21 +29,18 @@ Game::Game() {
 
     input_buffer_ = GetStdHandle(STD_INPUT_HANDLE);
 
-    active_screen_buffer_ = GetStdHandle(STD_OUTPUT_HANDLE);
+    screen_buffer_ = GetStdHandle(STD_OUTPUT_HANDLE);
     _CONSOLE_CURSOR_INFO cursor_info = {1, false};
-    SetConsoleCursorInfo(active_screen_buffer_, &cursor_info);
+    SetConsoleCursorInfo(screen_buffer_, &cursor_info);
     _SMALL_RECT wSize = {0, 0, SCREEN_WIDTH - 1, SCREEN_HEIGHT - 1};
-    SetConsoleWindowInfo(active_screen_buffer_, TRUE, &wSize);
+    SetConsoleWindowInfo(screen_buffer_, TRUE, &wSize);
     _COORD buffer_size = {SCREEN_WIDTH, SCREEN_HEIGHT};
-    SetConsoleScreenBufferSize(active_screen_buffer_, buffer_size);
+    SetConsoleScreenBufferSize(screen_buffer_, buffer_size);
     CONSOLE_FONT_INFOEX font_info = {sizeof(CONSOLE_FONT_INFOEX)};
-    GetCurrentConsoleFontEx(active_screen_buffer_, FALSE, &font_info);
+    GetCurrentConsoleFontEx(screen_buffer_, FALSE, &font_info);
     font_info.dwFontSize.X = 14;
     font_info.dwFontSize.Y = 24;
-    SetCurrentConsoleFontEx(active_screen_buffer_, FALSE,  &font_info);
-
-    secondary_screen_buffer_ = CreateConsoleScreenBuffer(GENERIC_WRITE, 0, NULL, CONSOLE_TEXTMODE_BUFFER, NULL);
-    SetConsoleCursorInfo(secondary_screen_buffer_, &cursor_info);
+    SetCurrentConsoleFontEx(screen_buffer_, FALSE,  &font_info);
 }
 
 void Game::play() {
@@ -54,10 +52,11 @@ void Game::play() {
 
     while (state_ != Game_state::over) {
         char input = get_input();
-
         if (input == 'p') {
             state_ = Game_state::paused;
         }
+        //window_resizing();
+
 
         if (state_ == Game_state::running) {
             prev_tick_count = tick_count;
@@ -80,11 +79,12 @@ void Game::play() {
             
             render_screen_grid();
             update_game_state();
+            Sleep(10);
         }
 
         else if (state_ == Game_state::paused) {
             draw_panel(raw_dt);   //DEBUG
-            swap_buffers();
+            render_screen_grid();
             char input = _getch();
             if (input == 'q') {
                 state_ = Game_state::over;
@@ -238,13 +238,43 @@ void Game::render_screen_grid() {
     _COORD origin = {0, 0};
     _COORD screen_size = {SCREEN_WIDTH, SCREEN_HEIGHT};
     SMALL_RECT write_region = {0, 0, SCREEN_WIDTH - 1, SCREEN_HEIGHT - 1};
-    WriteConsoleOutputA(secondary_screen_buffer_, screen_grid_, screen_size, origin, &write_region);
-    swap_buffers();
+    WriteConsoleOutputA(screen_buffer_, screen_grid_, screen_size, origin, &write_region);
 }
 
-void Game::swap_buffers() {
-    HANDLE temp = secondary_screen_buffer_;
-    secondary_screen_buffer_ = active_screen_buffer_;
-    active_screen_buffer_ = temp;
-    SetConsoleActiveScreenBuffer(active_screen_buffer_);
+
+void Game::window_resizing() {
+    CONSOLE_SCREEN_BUFFER_INFO buffer_info;
+    GetConsoleScreenBufferInfo(screen_buffer_, &buffer_info);
+    CONSOLE_FONT_INFOEX font_info = {sizeof(CONSOLE_FONT_INFOEX)};
+    GetCurrentConsoleFontEx(screen_buffer_, FALSE, &font_info);
+    
+
+    short newFontX, newFontY;
+    if (buffer_info.dwSize.X != SCREEN_WIDTH || buffer_info.dwSize.Y != SCREEN_HEIGHT) {
+        newFontX = font_info.dwFontSize.X * buffer_info.dwSize.X / SCREEN_WIDTH;
+        newFontY = font_info.dwFontSize.Y * buffer_info.dwSize.Y / SCREEN_HEIGHT;
+            
+        _CONSOLE_CURSOR_INFO cursor_info = {1, false};
+        if (!SetConsoleCursorInfo(screen_buffer_, &cursor_info)) {
+            std::cout << "cursor";
+            Sleep(10000);
+        }
+        _SMALL_RECT wSize = {0, 0, SCREEN_WIDTH - 1, SCREEN_HEIGHT - 1};
+        if (!SetConsoleWindowInfo(screen_buffer_, TRUE, &wSize)) {
+            std::cout << "window size";
+            Sleep(10000);
+        }
+        _COORD buffer_size = {SCREEN_WIDTH, SCREEN_HEIGHT};
+ 
+        if (!SetConsoleScreenBufferSize(screen_buffer_, buffer_size)) {
+            std::cout << "buffer size";
+            Sleep(10000);
+        }
+        font_info.dwFontSize.X = newFontX;
+        font_info.dwFontSize.Y = newFontY;
+        if (!SetCurrentConsoleFontEx(screen_buffer_, FALSE,  &font_info)) {
+            std::cout << "font size";
+            Sleep(10000);
+        }
+    }
 }
