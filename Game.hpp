@@ -42,4 +42,5 @@ class Game {
         void append_map_list(Map* new_map);
         void start_screen();
         void end_screen();
+        void window_resizing();
 };

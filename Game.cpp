@@ -22,20 +22,21 @@ Game::Game() {
     map_list_->next = NULL;
     score_ = 0;
     level_ = 1;
+    
+    _CONSOLE_CURSOR_INFO cursor_info = {1, false};
+    _SMALL_RECT wSize = {0, 0, SCREEN_WIDTH - 1, SCREEN_HEIGHT - 1};
+    _COORD buffer_size = {SCREEN_WIDTH, SCREEN_HEIGHT};
+    CONSOLE_FONT_INFOEX font_info = {sizeof(CONSOLE_FONT_INFOEX)};
 
     active_screen_buffer_ = GetStdHandle(STD_OUTPUT_HANDLE);
-    _CONSOLE_CURSOR_INFO cursor_info = {1, false};
     SetConsoleCursorInfo(active_screen_buffer_, &cursor_info);
-    _SMALL_RECT wSize = {0, 0, SCREEN_WIDTH - 1, SCREEN_HEIGHT - 1};
     SetConsoleWindowInfo(active_screen_buffer_, TRUE, &wSize);
-    _COORD buffer_size = {SCREEN_WIDTH, SCREEN_HEIGHT};
     SetConsoleScreenBufferSize(active_screen_buffer_, buffer_size);
-    CONSOLE_FONT_INFOEX font_info = {sizeof(CONSOLE_FONT_INFOEX)};
     GetCurrentConsoleFontEx(active_screen_buffer_, FALSE, &font_info);
     font_info.dwFontSize.Y = 28;
     SetCurrentConsoleFontEx(active_screen_buffer_, FALSE,  &font_info);
 
-    secondary_screen_buffer_ = CreateConsoleScreenBuffer(GENERIC_WRITE, 0, NULL, CONSOLE_TEXTMODE_BUFFER, NULL);
+    secondary_screen_buffer_ = CreateConsoleScreenBuffer(GENERIC_READ | GENERIC_WRITE, 0, NULL, CONSOLE_TEXTMODE_BUFFER, NULL); //change this
     SetConsoleCursorInfo(secondary_screen_buffer_, &cursor_info);
     SetCurrentConsoleFontEx(secondary_screen_buffer_, FALSE,  &font_info);
 }
@@ -78,7 +79,7 @@ void Game::play() {
             render_screen_grid();
 
             update_game_state();
-            //Sleep(2);
+            //Sleep(1);
         }
 
         else if (state_ == Game_state::paused) {
@@ -133,7 +134,6 @@ void Game::calculate_collisions(int wall_hit) {
 }
 
 
-//DEBUG MODE
 void Game::draw_panel(double fps) {
 
     for (char i = 0; i < MAP_HEIGHT; i++) {
@@ -262,12 +262,16 @@ void Game::swap_buffers() {
     SetConsoleActiveScreenBuffer(active_screen_buffer_);
 }
 
+void Game::window_resizing() {
+    
+
+
+}
 
 void Game::start_screen() {
     
 
 }
-
 
 void Game::end_screen() {
 
