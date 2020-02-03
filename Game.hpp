@@ -32,7 +32,7 @@ class Game {
         char get_input();
         void calculate_collisions(int wall_hit);
         void clear_screen_grid();
-        void draw_panel(double fps);  //DEBUG
+        void draw_panel(double fps);
         void draw_string(char* string, short attributes, int x_pos, int y_pos);
         void clear_screen_buffer();
         void render_screen_grid();
@@ -42,5 +42,4 @@ class Game {
         void append_map_list(Map* new_map);
         void start_screen();
         void end_screen();
-        void window_resizing();
 };
