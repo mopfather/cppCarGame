@@ -1,0 +1,81 @@
+* CLASSES AND THEIR PURPOSE
+In my project I defined two classes: the Game class, responsible for taking user input, updating the
+game state and drawing to the screen, and the Map class, that holds all the information about a map
+and all the methods necessary for updating its state based on input. I decided to create these two
+classes to separate the implementation details of how the map works from the main game loop.
+
+
+* CODE EXECUTION
+I create a game object and call three methods:
+	- Game::start_screen() draws the starting screen and waits for input, once a key is pressed
+	  the execution is passed to the next function.
+	
+	- Game::play() is the main game loop, on each iteration it updates the game state and 
+	  draws the game on the screen. The loop ends when the state_ field is set to Game_state::over,
+	  signaling the end of gameplay.
+	
+	- Game::end_screen() draws the game over screen and waits for input, once a key is pressed the 
+	  program closes.
+
+The game loop is designed as follows:
+	1) I make a call to QueryPerformanceCounter(), and use this to calculate the time between frames. 
+	   This information is used to calculate fps and decide when to scroll the map and update the score.
+	
+	2) I take user input and use it to decide whether to pause (p), resume, quit (q) the game or
+	   continue the execution normally.
+	
+	3) If the game is paused, go to 6).
+
+	4) If enough time has passed since the last time I scrolled the map, I call the Map::advance() 
+	   method to make the player advance. 
+	
+	5) I update the player position based on input (lateral movement) and update the score based on 
+	   player collision with game objects.
+	
+	6) I call a series of functions to draw the map and other information such as score and level
+	   on the screen.
+	
+	7) I call Sleep(1) to make sure that my game does not use too many resources.
+
+By designing the loop this way I allow the player to move as much as he wants sideways, making the game feel
+more responsive. A few details about the design of the game loop:
+	- There were some alternatives to the QueryPerformanceCounter() function, but that was the only one returning timestamps
+	  precise enough for my needs. The value returned by QPC is a 64 bit timestamp measured in ticks with 1 microsecond
+	  of precision.
+	  1 tick is equal to 1 second / (the frequency of the performance counter obtained from QueryPerformanceFrequency).
+
+	- The reason I draw the game even while its paused is because resizing the window can cause graphical artifacts,
+	  I get rid of them by clearing the screen buffer and drawing to it again.
+	  
+
+* PROBLEMS ENCOUNTERED AND LOW LEVEL DECISIONS
+The first problem I had to solve was figuring out how to draw to the screen; I decided using a high level
+function such as std::cout would be too slow and result in lag or an unresponsive game, and because the project 
+requirements forbids using graphical libraries i decided to use the windows console API.
+
+Drawing to the screen consists of writing the characters wanted into the active screen buffer.
+A console can have multiple screen buffers, but only one active screen buffer at a time. In my code I decided to have two screen buffers,
+so I could draw to an offscreen buffer and then swap once I'm done drawing, removing any potential screen flickering from my game.
+The console API offers two different versions for every drawing function, a function for Unicode and one for ANSI characters,
+but there's functionally no difference between the two for my program, so I decided to use the ANSI one for semplicity.
+
+I draw to the screen by passing an array of CHAR_INFO, a structure defined in the console API which contains both the character
+that I want to draw as well as the character attributes (character and background cell color) to WriteConsoleOutputA().
+I fill this array inside my own class methods, I write the map into it inside the Map::draw() method and I draw the side panel
+displaying game information inside the Game::draw_panel() method.
+This way I can define all other program behaviour inside my own functions, reducing my dependency on the console API to one simple
+function call, making modifying and debugging my code more simple.
+
+
+Another problem worth discussing was how to store the map information in memory and how to retrieve it when changing levels. 
+Since the number of levels needed to be stored in memory is not known at the start of the game I decided to use a linked list 
+to store the maps in memory, with the maps stored in order of level. Whenever I need to change level, I simply look up in the
+list if the map for that level is already present, if it is I update the current_map_ field to that map, otherwise I create a 
+new one and append it to the list. 
+
+The map itself does not store any information on the objects located outside of the screen, but only stores the current screen
+as a two dimensional array characters that represent the game objects.
+Whenever I need to scroll the map forward, I generate the new objects on the spot using a simple pseudo-random algorithm.
+This way storing many levels is lightweight and simple, and the impact on performance is negligible.
+
+

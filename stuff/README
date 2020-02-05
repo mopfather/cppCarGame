@@ -1,0 +1,30 @@
+* WHAT IS TEXT RACER 
+Text racer is a car racing game made in C++ for the programming course project 20/21.
+The game is played in a windows console and everything in the game is drawn with ascii characters.
+
+* INSTALLATION
+To install the game compile the .cpp source files with any c++ compiler from the project folder.
+The game relies on functions from the <windows.h> library and is not cross platform.
+Ex: cd <textRacerFolder>
+	g++ main.cpp Game.cpp Map.cpp -o "Text Racer"
+
+* HOW TO PLAY
+Launch the executable and you'll be greeted with the start screen, press any key to proceed to the game.
+The game is point based, you can pick up bonuses (B) to gain points, hit obstances (X) to lose points, or
+drive over specials (S) to clear every object on the screen.
+There are enemy cars with random movement, avoid them or you will lose points.
+
+Every 2000 points you proceed to the next level, where the game speed and amount of obstacles will increase.
+If you go below the score threshold needed for your level you will go back to the previous level, with the map
+in the same state (same player position, enemy car position and objects) as you left it.
+The game ends when you go below 0 points or when you decide to quit.
+
+* CONTROLS
+move left: 				'a'
+move right:				'd'
+pause:					'p'
+resume (while paused):  any key
+quit (while paused): 	'q'
+
+* AUTHOR
+Made by Giuliano Bruno.
