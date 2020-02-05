@@ -57,18 +57,17 @@ void Game::play() {
         fps = (double) frequency.QuadPart / (tick_count.QuadPart - prev_tick_count.QuadPart);
         
         char input = get_input();
-        if (input == 'p' && state_ == Game_state::running) {
+        if (state_ == Game_state::running && input == 'p') {
             state_ = Game_state::paused;
         }
-        else if (input == 'q' && state_ == Game_state::paused) {
+        else if (state_ == Game_state::paused && input == 'q') {
             state_ = Game_state::over;
         }
-        else if (input && state_ == Game_state::paused) {
+        else if (state_ == Game_state::paused && input) {
             state_ = Game_state::running;
         }
 
         if (state_ == Game_state::running) {
-
             if (dt > 200 * pow(0.94, level_)) {
                 score_ += 10;
                 current_map_->advance();
@@ -76,7 +75,10 @@ void Game::play() {
             }
 
             bool wall_hit = current_map_->player_move_sideways(input);
-            calculate_collisions(wall_hit);
+            if (wall_hit) {
+                score_ -= PENALTY;
+            }
+            calculate_collisions();
         }
         
         clear_screen_grid();
@@ -84,7 +86,7 @@ void Game::play() {
         draw_panel(fps);
         
         clear_screen_buffer();
-        render_screen_grid();
+        draw_screen_grid();
 
         update_game_state();
         Sleep(1);
@@ -100,11 +102,7 @@ char Game::get_input() {
 }
 
 
-void Game::calculate_collisions(int wall_hit) {
-    if (wall_hit) {
-        score_ -= PENALTY;
-    }
-
+void Game::calculate_collisions() {
     char collision = current_map_->player_collision();
     while (collision) {
         switch (collision) {
@@ -124,7 +122,6 @@ void Game::calculate_collisions(int wall_hit) {
 
 
 void Game::draw_panel(double fps) {
-
     for (char i = 0; i < MAP_HEIGHT; i++) {
         screen_grid_[SCREEN_WIDTH * (i + 1) - 1].Char.AsciiChar = '#';
         screen_grid_[SCREEN_WIDTH * (i + 1) - 1].Attributes = FOREGROUND_WHITE;
@@ -171,7 +168,7 @@ void Game::update_game_state() {
 
     else if (score_ < (level_ - 1) * 2000) {
         level_ -= 1;
-        score_ -= 800;
+        score_ -= 500;
         current_map_ = get_map(level_);
     }
 
@@ -237,7 +234,7 @@ void Game::clear_screen_buffer() {
     FillConsoleOutputAttribute(secondary_screen_buffer_, FOREGROUND_WHITE, buffer_info.dwSize.X * buffer_info.dwSize.Y, origin, &test); 
 }
 
-void Game::render_screen_grid() {
+void Game::draw_screen_grid() {
     _COORD origin = {0, 0};
     _COORD screen_size = {SCREEN_WIDTH, SCREEN_HEIGHT};
     SMALL_RECT write_region = {0, 0, SCREEN_WIDTH - 1, SCREEN_HEIGHT - 1};
@@ -343,7 +340,7 @@ void Game::end_screen() {
     FillConsoleOutputAttribute(secondary_screen_buffer_, FOREGROUND_RED, (buffer_info.srWindow.Right + 1) * 5, {0, 14}, &test);
 
     swap_buffers();
-    Sleep(1000);
+    Sleep(500);
     FlushConsoleInputBuffer(input_buffer_);
     _getch();
 }

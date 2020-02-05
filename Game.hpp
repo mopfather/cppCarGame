@@ -30,12 +30,12 @@ class Game {
         Game();
         void play();
         char get_input();
-        void calculate_collisions(int wall_hit);
+        void calculate_collisions();
         void clear_screen_grid();
         void draw_panel(double fps);
         void draw_string(char* string, short attributes, int x_pos, int y_pos);
         void clear_screen_buffer();
-        void render_screen_grid();
+        void draw_screen_grid();
         void swap_buffers();
         void update_game_state();
         Map* get_map(int level);

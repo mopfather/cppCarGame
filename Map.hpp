@@ -11,6 +11,14 @@ struct Map_position {
     char Y;
 };
 
+enum tiles {
+    tile_spikes = 'X',
+    tile_bonus = 'B',
+    tile_border = '#',
+    tile_empty = ' ',
+    tile_special = 'S'
+};
+
 class Map {
     private:
         char playfield_[MAP_HEIGHT][MAP_WIDTH];
@@ -28,6 +36,6 @@ class Map {
         void advance();
         char player_collision();
         void enemy_car_movement();
-        void draw(CHAR_INFO screen_grid[]);
         void clear_grid();
+        void draw(CHAR_INFO screen_grid[]);
 };

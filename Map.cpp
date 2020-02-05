@@ -4,14 +4,6 @@
 #include <time.h>
 #include <conio.h>
 
-enum tiles {
-    tile_spikes = 'X',
-    tile_bonus = 'B',
-    tile_border = '#',
-    tile_empty = ' ',
-    tile_special = 'S'
-};
-
 Map::Map(int level) {
     player_pos_ = MAP_WIDTH/2;
     enemy_pos_ = {MAP_WIDTH/2, 0};
@@ -161,15 +153,22 @@ void Map::advance() {
         }
 
         playfield_[0][j] = tile;
-        
     }
-
 }
+
+
+void Map::clear_grid() {
+    for (int i = 0; i < MAP_HEIGHT; i++) {
+        for (int j = 1; j < MAP_WIDTH - 1; j++) {
+            playfield_[i][j] = tile_empty;
+        }
+    }
+}
+
 
 void Map::draw(CHAR_INFO screen_grid[]) {
     for (char i = 0; i < MAP_HEIGHT; i++) {
         for (char j = 0; j < MAP_WIDTH; j++) {
-
             if (playfield_[i][j] == tile_spikes) {
                 screen_grid[j + i * SCREEN_WIDTH].Char.AsciiChar = 'X';
                 screen_grid[j + i * SCREEN_WIDTH].Attributes = FOREGROUND_RED;
@@ -203,12 +202,3 @@ void Map::draw(CHAR_INFO screen_grid[]) {
         }
     }
 }
-
-void Map::clear_grid() {
-    for (int i = 0; i < MAP_HEIGHT; i++) {
-        for (int j = 1; j < MAP_WIDTH - 1; j++) {
-            playfield_[i][j] = tile_empty;
-        }
-    }
-}
-
