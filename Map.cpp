@@ -57,7 +57,6 @@ char Map::player_collision() {
                 clear_grid();
                 return 0;
             }
-            
             else if (playfield_[i][j] != tile_empty) {
                 char collision = playfield_[i][j];
                 playfield_[i][j] = tile_empty;
@@ -123,8 +122,9 @@ bool Map::player_move_sideways(int keypressed) {
         player_pos_ = MAP_WIDTH - car_width - 1;
         return true;
     }
-
-    return false;
+    else {
+        return false;
+    }
 }
 
 void Map::advance() {
